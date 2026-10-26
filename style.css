@@ -922,28 +922,65 @@ body {
   background: rgba(239, 68, 68, 0.12);
 }
 
-.comment-form {
+.comment-form-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 18px;
 }
 
-.comment-author-input {
-  width: 220px;
-  max-width: 100%;
+.comment-form-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.author-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
-  color: var(--text-main);
-  padding: 10px 14px;
   border-radius: 10px;
+  padding: 0 12px;
+  width: 240px;
+  max-width: 100%;
+}
+
+.author-field:focus-within {
+  border-color: var(--accent);
+}
+
+.field-icon {
   font-size: 0.9rem;
+}
+
+.comment-author-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  padding: 10px 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
   outline: none;
+}
+
+.comment-tip {
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 .comment-input-row {
   display: flex;
-  gap: 10px;
+  gap: 12px;
+  align-items: stretch;
 }
 
 .comment-content-input {
@@ -952,31 +989,35 @@ body {
   border: 1px solid var(--border-color);
   color: var(--text-main);
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   font-size: 0.95rem;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 54px;
   outline: none;
 }
 
-.comment-author-input:focus,
 .comment-content-input:focus {
   border-color: var(--accent);
 }
 
 .comment-submit-btn {
-  background: var(--accent);
+  background: var(--eq-bg);
   color: #fff;
   border: none;
-  border-radius: 10px;
-  padding: 0 20px;
-  font-size: 0.92rem;
+  border-radius: 12px;
+  padding: 0 24px;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.15s;
+  transition: transform 0.12s, opacity 0.15s;
 }
 
 .comment-submit-btn:hover {
-  background: var(--accent-hover);
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
 .comment-list {

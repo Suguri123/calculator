@@ -279,7 +279,7 @@ document.getElementById('copyCalcResult').addEventListener('click', () => {
 window.addEventListener('keydown', (e) => {
   const calcTabActive = document.getElementById('tab-calculator').classList.contains('active');
   if (!calcTabActive) return;
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
 
   if (e.key >= '0' && e.key <= '9') {
     appendValue(e.key);
@@ -973,6 +973,13 @@ commentForm.addEventListener('submit', (e) => {
   commentContentInput.value = '';
   renderComments();
   showToast('댓글이 등록되었습니다!');
+});
+
+commentContentInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    commentForm.requestSubmit();
+  }
 });
 
 // 관리자 메뉴 열기/닫기
