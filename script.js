@@ -834,3 +834,281 @@ document.getElementById('swapUnitBtn').addEventListener('click', () => {
 });
 
 loadUnitCategory('length');
+
+// ==========================================
+// 4. 댓글 작성 & 관리자 메뉴 (비밀번호: 1234)
+// ==========================================
+const ADMIN_PASSWORD = '1234';
+let isAdminAuthenticated = false;
+let pendingDeleteCommentId = null;
+
+const defaultComments = [
+  {
+    id: 1,
+    author: '관리자',
+    content: '스마트 올인원 계산기에 오신 것을 환영합니다! 사용 후기나 건의사항을 자유롭게 남겨주세요.',
+    date: '2026. 10. 26.'
+  }
+];
+
+let commentsData = JSON.parse(localStorage.getItem('smart_calc_comments') || 'null');
+if (!commentsData) {
+  commentsData = defaultComments;
+  localStorage.setItem('smart_calc_comments', JSON.stringify(commentsData));
+}
+
+const commentForm = document.getElementById('commentForm');
+const commentAuthorInput = document.getElementById('commentAuthor');
+const commentContentInput = document.getElementById('commentContent');
+const commentListEl = document.getElementById('commentList');
+const commentCountBadge = document.getElementById('commentCountBadge');
+
+const adminToggleBtn = document.getElementById('adminToggleBtn');
+const adminStatusBadge = document.getElementById('adminStatusBadge');
+const adminPanel = document.getElementById('adminPanel');
+const adminLoginBox = document.getElementById('adminLoginBox');
+const adminControlBox = document.getElementById('adminControlBox');
+const adminPasswordInput = document.getElementById('adminPasswordInput');
+const adminLoginSubmit = document.getElementById('adminLoginSubmit');
+const adminLoginCancel = document.getElementById('adminLoginCancel');
+const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+const selectAllCommentsChk = document.getElementById('selectAllComments');
+const deleteSelectedCommentsBtn = document.getElementById('deleteSelectedCommentsBtn');
+const deleteAllCommentsBtn = document.getElementById('deleteAllCommentsBtn');
+
+const deleteModal = document.getElementById('deleteModal');
+const modalPasswordInput = document.getElementById('modalPasswordInput');
+const modalConfirmDeleteBtn = document.getElementById('modalConfirmDeleteBtn');
+const modalCancelBtn = document.getElementById('modalCancelBtn');
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function saveComments() {
+  localStorage.setItem('smart_calc_comments', JSON.stringify(commentsData));
+}
+
+function renderComments() {
+  commentCountBadge.textContent = commentsData.length;
+
+  if (!commentsData.length) {
+    commentListEl.innerHTML = '<li class="empty-msg" style="margin: 20px 0;">등록된 댓글이 없습니다. 첫 번째 댓글을 남겨보세요!</li>';
+    selectAllCommentsChk.checked = false;
+    return;
+  }
+
+  commentListEl.innerHTML = commentsData
+    .map(
+      (item) => `
+      <li class="comment-item" data-id="${item.id}">
+        <div class="comment-left">
+          ${
+            isAdminAuthenticated
+              ? `<input type="checkbox" class="comment-checkbox" data-id="${item.id}" />`
+              : ''
+          }
+          <div class="comment-body">
+            <div class="comment-meta">
+              <span class="comment-author">${escapeHtml(item.author)}</span>
+              <span class="comment-date">${escapeHtml(item.date)}</span>
+            </div>
+            <div class="comment-text">${escapeHtml(item.content)}</div>
+          </div>
+        </div>
+        <button class="comment-del-btn" data-id="${item.id}" title="댓글 삭제 (관리자)">🗑️ 삭제</button>
+      </li>
+    `
+    )
+    .join('');
+
+  commentListEl.querySelectorAll('.comment-del-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = Number(btn.dataset.id);
+      if (isAdminAuthenticated) {
+        deleteCommentById(id);
+      } else {
+        openDeleteModal(id);
+      }
+    });
+  });
+}
+
+function deleteCommentById(id) {
+  commentsData = commentsData.filter((c) => c.id !== id);
+  saveComments();
+  renderComments();
+  showToast('댓글이 삭제되었습니다.');
+}
+
+// 댓글 작성
+commentForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const author = commentAuthorInput.value.trim() || '익명';
+  const content = commentContentInput.value.trim();
+  if (!content) return;
+
+  const now = new Date();
+  const dateStr = now.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  commentsData.unshift({
+    id: Date.now(),
+    author,
+    content,
+    date: dateStr
+  });
+
+  saveComments();
+  commentContentInput.value = '';
+  renderComments();
+  showToast('댓글이 등록되었습니다!');
+});
+
+// 관리자 메뉴 열기/닫기
+adminToggleBtn.addEventListener('click', () => {
+  const isVisible = adminPanel.style.display !== 'none';
+  if (isVisible) {
+    adminPanel.style.display = 'none';
+  } else {
+    adminPanel.style.display = 'block';
+    if (isAdminAuthenticated) {
+      adminLoginBox.style.display = 'none';
+      adminControlBox.style.display = 'flex';
+    } else {
+      adminLoginBox.style.display = 'flex';
+      adminControlBox.style.display = 'none';
+      adminPasswordInput.value = '';
+      adminPasswordInput.focus();
+    }
+  }
+});
+
+function verifyAdminLogin() {
+  if (adminPasswordInput.value === ADMIN_PASSWORD) {
+    isAdminAuthenticated = true;
+    adminPasswordInput.value = '';
+    adminLoginBox.style.display = 'none';
+    adminControlBox.style.display = 'flex';
+    adminStatusBadge.style.display = 'inline-block';
+    adminToggleBtn.textContent = '🛡️ 관리자 메뉴 (열림)';
+    renderComments();
+    showToast('관리자 모드로 로그인되었습니다.');
+  } else {
+    showToast('비밀번호가 일치하지 않습니다.');
+    adminPasswordInput.value = '';
+    adminPasswordInput.focus();
+  }
+}
+
+adminLoginSubmit.addEventListener('click', verifyAdminLogin);
+adminPasswordInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    verifyAdminLogin();
+  }
+});
+
+adminLoginCancel.addEventListener('click', () => {
+  adminPanel.style.display = 'none';
+});
+
+adminLogoutBtn.addEventListener('click', () => {
+  isAdminAuthenticated = false;
+  adminStatusBadge.style.display = 'none';
+  adminPanel.style.display = 'none';
+  adminToggleBtn.textContent = '🔒 관리자 메뉴';
+  selectAllCommentsChk.checked = false;
+  renderComments();
+  showToast('관리자 모드가 해제되었습니다.');
+});
+
+// 전체 선택 체크박스
+selectAllCommentsChk.addEventListener('change', () => {
+  const checked = selectAllCommentsChk.checked;
+  commentListEl.querySelectorAll('.comment-checkbox').forEach((chk) => {
+    chk.checked = checked;
+  });
+});
+
+// 선택 댓글 일괄 삭제
+deleteSelectedCommentsBtn.addEventListener('click', () => {
+  if (!isAdminAuthenticated) return;
+  const checkedBoxes = Array.from(commentListEl.querySelectorAll('.comment-checkbox:checked'));
+  if (!checkedBoxes.length) {
+    showToast('삭제할 댓글을 먼저 선택해 주세요.');
+    return;
+  }
+  const idsToRemove = new Set(checkedBoxes.map((chk) => Number(chk.dataset.id)));
+  commentsData = commentsData.filter((c) => !idsToRemove.has(c.id));
+  selectAllCommentsChk.checked = false;
+  saveComments();
+  renderComments();
+  showToast(`${idsToRemove.size}개의 댓글이 삭제되었습니다.`);
+});
+
+// 전체 댓글 초기화
+deleteAllCommentsBtn.addEventListener('click', () => {
+  if (!isAdminAuthenticated) return;
+  if (!commentsData.length) {
+    showToast('삭제할 댓글이 없습니다.');
+    return;
+  }
+  commentsData = [];
+  selectAllCommentsChk.checked = false;
+  saveComments();
+  renderComments();
+  showToast('모든 댓글이 삭제되었습니다.');
+});
+
+// 개별 댓글 삭제 모달
+function openDeleteModal(commentId) {
+  pendingDeleteCommentId = commentId;
+  modalPasswordInput.value = '';
+  deleteModal.style.display = 'flex';
+  modalPasswordInput.focus();
+}
+
+function closeDeleteModal() {
+  pendingDeleteCommentId = null;
+  deleteModal.style.display = 'none';
+}
+
+function confirmModalDelete() {
+  if (modalPasswordInput.value === ADMIN_PASSWORD) {
+    if (pendingDeleteCommentId !== null) {
+      deleteCommentById(pendingDeleteCommentId);
+    }
+    closeDeleteModal();
+  } else {
+    showToast('관리자 비밀번호가 올바르지 않습니다.');
+    modalPasswordInput.value = '';
+    modalPasswordInput.focus();
+  }
+}
+
+modalConfirmDeleteBtn.addEventListener('click', confirmModalDelete);
+modalPasswordInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    confirmModalDelete();
+  } else if (e.key === 'Escape') {
+    closeDeleteModal();
+  }
+});
+modalCancelBtn.addEventListener('click', closeDeleteModal);
+deleteModal.addEventListener('click', (e) => {
+  if (e.target === deleteModal) closeDeleteModal();
+});
+
+renderComments();

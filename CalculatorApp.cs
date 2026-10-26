@@ -63,11 +63,22 @@ namespace SmartCalculatorApp
         private ListView lvAllUnits;
         private bool suppressUnitEvent = false;
 
+        // 댓글 및 관리자 상태
+        private ListView lvComments;
+        private TextBox txtCommentAuthor;
+        private TextBox txtCommentContent;
+        private TextBox txtAdminPass;
+        private Button btnAdminLogin;
+        private Button btnDeleteComment;
+        private Button btnDeleteAllComments;
+        private Label lblAdminBadge;
+        private bool isAdminMode = false;
+
         public MainForm()
         {
             this.Text = "스마트 올인원 계산기 (계산 · 실시간 환율 · 단위변환)";
-            this.Size = new Size(860, 680);
-            this.MinimumSize = new Size(820, 640);
+            this.Size = new Size(860, 860);
+            this.MinimumSize = new Size(820, 820);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = BgMain;
             this.ForeColor = TextMain;
@@ -77,6 +88,7 @@ namespace SmartCalculatorApp
 
             InitCurrencyData();
             BuildHeaderAndTabs();
+            BuildCommentPanel();
             BuildCalculatorPanel();
             BuildCurrencyPanel();
             BuildUnitPanel();
@@ -557,6 +569,7 @@ namespace SmartCalculatorApp
 
         private void MainForm_KeyDown(object sender, KeyEventArgs e)
         {
+            if (this.ActiveControl is TextBox) return;
             if (!panelCalc.Visible) return;
 
             if (e.KeyCode >= Keys.D0 && e.KeyCode <= Keys.D9 && !e.Shift)
@@ -1219,6 +1232,195 @@ namespace SmartCalculatorApp
             {
                 suppressUnitEvent = false;
             }
+        }
+
+        // =====================================================
+        // 4. 하단 댓글 & 관리자 삭제 메뉴 (비밀번호: 1234)
+        // =====================================================
+        private void BuildCommentPanel()
+        {
+            Panel commentPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 195,
+                BackColor = BgPanel,
+                Padding = new Padding(20, 8, 20, 10)
+            };
+
+            Label lblTitle = new Label
+            {
+                Text = "💬 사용자 댓글",
+                Font = new Font("Malgun Gothic", 10f, FontStyle.Bold),
+                ForeColor = TextMain,
+                Location = new Point(20, 8),
+                AutoSize = true
+            };
+
+            lblAdminBadge = new Label
+            {
+                Text = "🔒 관리자 잠금",
+                Font = new Font("Malgun Gothic", 8.5f, FontStyle.Bold),
+                ForeColor = TextMuted,
+                Location = new Point(125, 10),
+                AutoSize = true
+            };
+
+            Label lblPass = new Label
+            {
+                Text = "관리자 암호:",
+                Font = new Font("Malgun Gothic", 8.5f),
+                ForeColor = TextMuted,
+                Location = new Point(365, 10),
+                AutoSize = true
+            };
+
+            txtAdminPass = new TextBox
+            {
+                Location = new Point(440, 7),
+                Size = new Size(90, 24),
+                PasswordChar = '●',
+                BackColor = BgInput,
+                ForeColor = TextMain,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Malgun Gothic", 9f)
+            };
+
+            btnAdminLogin = CreateCalcButton("관리자 인증", 536, 6, 86, 25, BgCard, TextMain, 8.5f);
+            btnDeleteComment = CreateCalcButton("🗑️ 선택 삭제", 628, 6, 94, 25, Color.FromArgb(239, 68, 68), Color.White, 8.5f);
+            btnDeleteAllComments = CreateCalcButton("⚠️ 전체 삭제", 728, 6, 94, 25, UtilBg, TextMain, 8.5f);
+
+            btnDeleteComment.Enabled = false;
+            btnDeleteAllComments.Enabled = false;
+
+            btnAdminLogin.Click += (s, e) =>
+            {
+                if (!isAdminMode)
+                {
+                    if (txtAdminPass.Text == "1234")
+                    {
+                        isAdminMode = true;
+                        txtAdminPass.Text = "";
+                        txtAdminPass.Enabled = false;
+                        btnAdminLogin.Text = "로그아웃";
+                        lblAdminBadge.Text = "🛡️ 관리자 모드 ON";
+                        lblAdminBadge.ForeColor = Color.FromArgb(16, 185, 129);
+                        btnDeleteComment.Enabled = true;
+                        btnDeleteAllComments.Enabled = true;
+                    }
+                    else
+                    {
+                        MessageBox.Show("관리자 비밀번호가 일치하지 않습니다.", "인증 실패", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtAdminPass.Text = "";
+                        txtAdminPass.Focus();
+                    }
+                }
+                else
+                {
+                    isAdminMode = false;
+                    txtAdminPass.Enabled = true;
+                    btnAdminLogin.Text = "관리자 인증";
+                    lblAdminBadge.Text = "🔒 관리자 잠금";
+                    lblAdminBadge.ForeColor = TextMuted;
+                    btnDeleteComment.Enabled = false;
+                    btnDeleteAllComments.Enabled = false;
+                }
+            };
+
+            btnDeleteComment.Click += (s, e) =>
+            {
+                if (!isAdminMode) return;
+                if (lvComments.SelectedItems.Count == 0)
+                {
+                    MessageBox.Show("삭제할 댓글을 목록에서 선택해 주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                foreach (ListViewItem item in lvComments.SelectedItems)
+                {
+                    lvComments.Items.Remove(item);
+                }
+            };
+
+            btnDeleteAllComments.Click += (s, e) =>
+            {
+                if (!isAdminMode) return;
+                lvComments.Items.Clear();
+            };
+
+            // 댓글 입력 줄
+            txtCommentAuthor = new TextBox
+            {
+                Location = new Point(20, 36),
+                Size = new Size(120, 28),
+                Text = "익명",
+                BackColor = BgInput,
+                ForeColor = TextMain,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Malgun Gothic", 9.5f)
+            };
+
+            txtCommentContent = new TextBox
+            {
+                Location = new Point(146, 36),
+                Size = new Size(576, 28),
+                BackColor = BgInput,
+                ForeColor = TextMain,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Malgun Gothic", 9.5f)
+            };
+
+            Button btnAddComment = CreateCalcButton("댓글 등록", 728, 35, 94, 27, Accent, Color.White, 9f);
+            Action addCommentAction = () =>
+            {
+                string author = string.IsNullOrWhiteSpace(txtCommentAuthor.Text) ? "익명" : txtCommentAuthor.Text.Trim();
+                string content = txtCommentContent.Text.Trim();
+                if (string.IsNullOrEmpty(content)) return;
+
+                ListViewItem item = new ListViewItem(author);
+                item.SubItems.Add(content);
+                item.SubItems.Add(DateTime.Now.ToString("yyyy-MM-dd HH:mm"));
+                lvComments.Items.Insert(0, item);
+                txtCommentContent.Text = "";
+            };
+
+            btnAddComment.Click += (s, e) => addCommentAction();
+            txtCommentContent.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    e.SuppressKeyPress = true;
+                    addCommentAction();
+                }
+            };
+
+            lvComments = new ListView
+            {
+                Location = new Point(20, 68),
+                Size = new Size(802, 115),
+                View = View.Details,
+                FullRowSelect = true,
+                GridLines = true,
+                BackColor = BgInput,
+                ForeColor = TextMain,
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Malgun Gothic", 9f)
+            };
+            lvComments.Columns.Add("작성자", 110);
+            lvComments.Columns.Add("댓글 내용", 520);
+            lvComments.Columns.Add("작성 시간", 150);
+
+            ListViewItem welcome = new ListViewItem("관리자");
+            welcome.SubItems.Add("스마트 올인원 계산기에 오신 것을 환영합니다! 자유롭게 댓글을 남겨주세요.");
+            welcome.SubItems.Add("2026-10-26");
+            lvComments.Items.Add(welcome);
+
+            commentPanel.Controls.AddRange(new Control[]
+            {
+                lblTitle, lblAdminBadge, lblPass, txtAdminPass, btnAdminLogin,
+                btnDeleteComment, btnDeleteAllComments,
+                txtCommentAuthor, txtCommentContent, btnAddComment, lvComments
+            });
+
+            this.Controls.Add(commentPanel);
         }
 
         [STAThread]
